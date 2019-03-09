@@ -8,11 +8,12 @@ error()   { echo "[ERROR]   $@" ; }
 fatal()   { echo "[FATAL]   $@" ; exit 1 ; }
 
 CURR_URL=false
-CURR_DEBUG=false
+CURR_USER=${USER}
 CURR_JWT=false
+CURR_AUTH_LOC="/home/${USER}/.api"
 
-STAGING_API_URL='https://luna-api-staging.iunu.com/'
-LAB_API_URL='https://lab-luna-api.herokuapp.com/'
+STAGING_API_URL='https://luna-api-staging.iunu.com'
+LAB_API_URL='https://lab-luna-api.herokuapp.com'
 
 #######################################
 # Cleanup files from the backup dir
@@ -25,21 +26,92 @@ LAB_API_URL='https://lab-luna-api.herokuapp.com/'
 #   None
 #######################################
 function auth() {
-    readonly local api_env=${1}
-    readonly local api_authfile="~/.api/${api_env}_authfile.json"
+    if [[ ("$#" -ne 1 && "$#" -ne 2) ]]; then
+        error "Must pass at least an environment and an optional user account"
+        return 1
+    fi
 
-    if [ "$seconds" -eq 0 ]; then 
-        CURR_URL=STAGING_API_URL
-    elif [ "$api_env" == "lab" ]; then
-        CURR_URL=LAB_API_URL
+    local api_env=${1}
+    local api_authfile="${CURR_AUTH_LOC}/${api_env}_authfile.json"
+
+    if [ "$api_env"=="staging" ]; then 
+        CURR_URL=$STAGING_API_URL
+    elif [ "$api_env"=="lab" ]; then
+        CURR_URL=$LAB_API_URL
     else
         error "API environment ${api_env} not found"
-        return
+        return 1
     fi
 
-    CURR_AUTHFILE="~/.api/${api_env}_authfile"
-    if [ ! -f $CURR_AUTHFILE ]; then
-        error "Could not find ${CURR_AUTHFILE}. Credentials must exist as JSON at this location"
-        return
+    if [ ! -f $api_authfile ]; then
+        error "Could not find ${api_authfile}. Credentials must exist as JSON at this location"
+        return 1
     fi
+
+    local auth_url="$CURR_URL/auth/login"
+    local jwt=$(curl --silent -H "Origin: http://${CURR_USER}.iunu.com" \
+        -H "Content-Type: application/json" \
+        -H "DNT: 1" \
+        $auth_url -d @${api_authfile} | jq .token)
+
+    CURR_JWT=$(echo "$jwt" | tr -d '"')
+}
+
+#######################################
+# Cleanup files from the backup dir
+# Globals:
+#   CURR_URL 
+#   CURR_AUTHFILE
+# Arguments:
+#   $1: http_method 
+#   $2: http_url
+#   $3: http_payload
+# Returns:
+#   None
+#######################################
+function _iunu_curl() {
+    local method=$1
+    local endpoint=$2
+    local payload=false
+
+    if [[ "$#" -eq 3 ]]; then
+        payload="$3"
+    else
+        payload='{}'
+    fi
+
+    local url="${CURR_URL}/${endpoint}"
+
+    if [[ ! $CURR_JWT ]]; then
+        error "Must authenticate with 'auth' before making API requests"
+        return 1
+    fi
+
+    if [[ ("$method"=="PUT" || "$method"=="POST") && ! $payload ]]; then
+        error "PUT or POST methods must include a JSON payload"
+        return 1
+    fi
+
+    curl -v -X $method \
+        -H "Origin http://${CURR_USER}.iunu.com" \
+        -H "Content-Type: application/json" \
+        -H "Authorization: $CURR_JWT" \
+        -H "DNT: 1" \
+        -d $payload $url | jq .
+}
+
+function cg() {
+    _iunu_curl GET $1
+}
+
+function cde() {
+    _iunu_curl DELETE $1
+}
+
+function cpo() {
+    _iunu_curl POST $1 $2
+}
+
+function cpu() {
+    _iunu_curl PUT $1 $2
 }

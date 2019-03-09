@@ -11,8 +11,8 @@ function _install() {
         sudo apt install jq
     fi
 
-    mkdir -p ${path}/.api
-    cp "${path}/adapter" ${path}/.api
+    mkdir -p ${dest}/.api
+    cp "${path}/adapter" ${dest}/.api/adapter
 
     if [ -f ~/.bash_local ]; then
         "Adding source command to ~/.bash_local"
@@ -24,6 +24,8 @@ function _install() {
         "Adding source command to ~/.bash_profile"
         echo "[ -f ~/.api/adapter ] && source ~/.api/adapter" >> ~/.bash_profile
     fi
+
+    source ~/.bash_profile
 
     echo "Complete"
 }
