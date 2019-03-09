@@ -1,0 +1,45 @@
+#!/bin/bash
+# 
+# Simple cli for interacting with any API instance
+
+info()    { echo "[INFO]    $@" ; }
+warning() { echo "[WARNING] $@" ; }
+error()   { echo "[ERROR]   $@" ; }
+fatal()   { echo "[FATAL]   $@" ; exit 1 ; }
+
+CURR_URL=false
+CURR_DEBUG=false
+CURR_JWT=false
+
+STAGING_API_URL='https://luna-api-staging.iunu.com/'
+LAB_API_URL='https://lab-luna-api.herokuapp.com/'
+
+#######################################
+# Cleanup files from the backup dir
+# Globals:
+#   CURR_URL 
+#   CURR_AUTHFILE
+# Arguments:
+#   $1: environment 
+# Returns:
+#   None
+#######################################
+function auth() {
+    readonly local api_env=${1}
+    readonly local api_authfile="~/.api/${api_env}_authfile.json"
+
+    if [ "$seconds" -eq 0 ]; then 
+        CURR_URL=STAGING_API_URL
+    elif [ "$api_env" == "lab" ]; then
+        CURR_URL=LAB_API_URL
+    else
+        error "API environment ${api_env} not found"
+        return
+    fi
+
+    CURR_AUTHFILE="~/.api/${api_env}_authfile"
+    if [ ! -f $CURR_AUTHFILE ]; then
+        error "Could not find ${CURR_AUTHFILE}. Credentials must exist as JSON at this location"
+        return
+    fi
+}

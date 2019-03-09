@@ -1,0 +1,32 @@
+#!/bin/bash
+
+function _install() {
+    readonly local user="$USER"
+    readonly local path=$(pwd)
+    readonly local dest="/home/${user}"
+    echo "Installing API adapter for ${user} from ${path}"
+
+    if [ ! -x  jq ]; then
+        echo "jq utility not found. Installing"
+        sudo apt install jq
+    fi
+
+    mkdir -p ${path}/.api
+    cp "${path}/adapter" ${path}/.api
+
+    if [ -f ~/.bash_local ]; then
+        "Adding source command to ~/.bash_local"
+        echo "[ -f ~/.api/adapter ] && source ~/.api/adapter" >> ~/.bash_local
+    elif [ -f ~/.bash_aliases ]; then
+        "Adding source command to ~/.bash_aliases"
+        echo "[ -f ~/.api/adapter ] && source ~/.api/adapter" >> ~/.bash_aliases
+    elif [ -f ~/.bash_profile ]; then
+        "Adding source command to ~/.bash_profile"
+        echo "[ -f ~/.api/adapter ] && source ~/.api/adapter" >> ~/.bash_profile
+    fi
+
+    echo "Complete"
+}
+
+_install
+unset _install
