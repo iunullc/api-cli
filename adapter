@@ -49,6 +49,12 @@ function auth() {
     fi
 
     local auth_url="$CURR_URL/auth/login"
+
+    curl --silent -H "Origin: http://${CURR_USER}.iunu.com" \
+        -H "Content-Type: application/json" \
+        -H "DNT: 1" \
+        $auth_url -d @${api_authfile} | jq
+
     local jwt=$(curl --silent -H "Origin: http://${CURR_USER}.iunu.com" \
         -H "Content-Type: application/json" \
         -H "DNT: 1" \
@@ -92,7 +98,7 @@ function _iunu_curl() {
         return 1
     fi
 
-    curl -v -X $method \
+    curl -X $method \
         -H "Origin http://${CURR_USER}.iunu.com" \
         -H "Content-Type: application/json" \
         -H "Authorization: $CURR_JWT" \
